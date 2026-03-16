@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>90-Day Reset Tracker v2</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel2: #1f2430;
+    --text: #e8ecf1;
+    --muted: #a8b0bd;
+    --line: #2b3240;
+    --good: #4caf50;
+    --warn: #ffb300;
+    --bad: #e53935;
+    --accent: #6ea8fe;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 16px; }
+  h1, h2, h3 { margin: 0 0 10px 0; line-height: 1.2; }
+  .muted { color: var(--muted); }
+  .grid { display: grid; gap: 12px; }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  label {
+    display: block;
+    margin: 10px 0 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  input, select, textarea, button {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+  textarea { min-height: 88px; resize: vertical; }
+  button { cursor: pointer; background: #253048; }
+  button:hover { filter: brightness(1.08); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+  .pill {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    margin: 2px 6px 2px 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .bar {
+    width: 100%;
+    height: 12px;
+    background: var(--panel2);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+  }
+  .kpi { font-size: 28px; font-weight: 700; }
+  .small { font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 8px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 600; }
+  .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    background: rgba(15,17,21,0.92);
+    backdrop-filter: blur(6px);
+    padding-top: 8px;
+  }
+  details {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: var(--panel);
+  }
+  summary { cursor: pointer; color: var(--text); font-weight: 600; }
+  .tag-good, .tag-warn, .tag-bad {
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--line);
+  }
+  .tag-good { color: var(--good); }
+  .tag-warn { color: var(--warn); }
+  .tag-bad { color: var(--bad); }
+  .section-note {
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+    margin-top: 6px;
+  }
+  ul { padding-left: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>90-Day Reset Tracker</h1>
+  <div class="muted">Phone-friendly single-file tracker. Data stays in your browser via localStorage.</div>
+
+  <div class="grid grid-3" style="margin-top:12px;">
+    <div class="card">
+      <div class="muted small">Body composition</div>
+      <div class="kpi" id="weightDelta">0.0 kg</div>
+      <div class="small muted">Change from baseline weight</div>
+      <div class="bar" style="margin-top:8px;"><div class="fill" id="weightBar"></div></div>
+    </div>
+    <div class="card">
+      <div class="muted small">Morning caffeine</div>
+      <div class="kpi" id="caffeineAvg">0.0</div>
+      <div class="small muted">7-day average cans/day</div>
+      <div class="bar" style="margin-top:8px;"><div class="fill" id="caffeineBar"></div></div>
+    </div>
+    <div class="card">
+      <div class="muted small">Pressure control</div>
+      <div class="kpi" id="confidenceScore">0%</div>
+      <div class="small muted">Last 14 days: routine adherence</div>
+      <div class="bar" style="margin-top:8px;"><div class="fill" id="confidenceBar"></div></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:12px;">
+    <div class="card">
+      <h2>Setup</h2>
+      <div class="row">
+        <div>
+          <label>Start date</label>
+          <input id="startDate" type="date" />
+        </div>
+        <div>
+          <label>Baseline weight (kg)</label>
+          <input id="baselineWeight" type="number" step="0.1" value="82" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Baseline waist (cm)</label>
+          <input id="baselineWaist" type="number" step="0.1" value="85" />
+        </div>
+        <div>
+          <label>Target weight loss (kg)</label>
+          <input id="targetLoss" type="number" step="0.1" value="3" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Target waist (cm)</label>
+          <input id="targetWaist" type="number" step="0.1" value="82" />
+        </div>
+        <div>
+          <label>Baseline caffeine cans/day</label>
+          <input id="baselineCaffeine" type="number" step="0.5" value="2.5" />
+        </div>
+      </div>
+      <div class="section-note small muted">
+        Walking is treated as already established. The caffeine goal focuses on the morning habit only.
+      </div>
+      <div class="sticky-actions">
+        <button onclick="saveSetup()">Save setup</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Today</h2>
+      <div class="row">
+        <div>
+          <label>Date</label>
+          <input id="entryDate" type="date" />
+        </div>
+        <div>
+          <label>Weight (kg)</label>
+          <input id="weight" type="number" step="0.1" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Waist (cm)</label>
+          <input id="waist" type="number" step="0.1" />
+        </div>
+        <div>
+          <label>Training done?</label>
+          <select id="training">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <h3 style="margin-top:14px;">Morning caffeine habit</h3>
+      <div class="row">
+        <div>
+          <label>Planned cans today</label>
+          <input id="plannedCaffeine" type="number" step="0.5" min="0" />
+        </div>
+        <div>
+          <label>Actual cans today</label>
+          <input id="actualCaffeine" type="number" step="0.5" min="0" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>First craving resisted?</label>
+          <select id="firstCravingResisted">
+            <option value="">Not set</option>
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+        <div>
+          <label>Unplanned purchase?</label>
+          <select id="unplannedPurchase">
+            <option value="">Not set</option>
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Morning drink type</label>
+      <select id="morningDrinkType">
+        <option value="">Not set</option>
+        <option value="none">None</option>
+        <option value="redbull">Red Bull</option>
+        <option value="coke">Coke</option>
+        <option value="coffee">Coffee</option>
+        <option value="tea">Tea</option>
+        <option value="zero_caffeine_soft_drink">Zero-caffeine soft drink</option>
+        <option value="sparkling_water">Sparkling water</option>
+        <option value="water">Water</option>
+        <option value="other">Other</option>
+      </select>
+
+      <h3 style="margin-top:14px;">Pressure / sexual routine</h3>
+      <div class="row">
+        <div>
+          <label>Porn used?</label>
+          <select id="porn">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label>Masturbation?</label>
+          <select id="masturbation">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Reverse kegel practice?</label>
+          <select id="reverseKegel">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+        <div>
+          <label>Stretch before bed?</label>
+          <select id="stretch">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Anxiety level (1-10)</label>
+          <input id="anxiety" type="number" min="1" max="10" step="1" />
+        </div>
+        <div>
+          <label>Confidence practice</label>
+          <select id="sexPractice">
+            <option value="none">None</option>
+            <option value="solo_no_porn">Solo, no porn, low pressure</option>
+            <option value="partner_non_goal">Partner intimacy, non-goal-focused</option>
+            <option value="partner_penetration_attempt">Penetration attempt</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Notes</label>
+      <textarea id="notes" placeholder="Triggers, wins, failures, patterns."></textarea>
+
+      <div class="sticky-actions">
+        <div class="row">
+          <button onclick="saveEntry()">Save entry</button>
+          <button onclick="exportData()">Export JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:12px;">
+    <div class="card">
+      <h2>12-week execution model</h2>
+      <table>
+        <thead>
+          <tr><th>Period</th><th>Body composition</th><th>Morning caffeine habit</th><th>Pressure / sexual routine</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Weeks 1-2</td>
+            <td>Track daily. No extreme diet. Keep lifting. Standardize one meal.</td>
+            <td>Cap at 2 cans/day. Pre-decide the limit. No unplanned extra can.</td>
+            <td>No porn during weekdays. Reverse kegel only as training, not erection testing.</td>
+          </tr>
+          <tr>
+            <td>Weeks 3-4</td>
+            <td>Hold a small deficit. Waist 2x/week. Watch weekend leakage.</td>
+            <td>Average 1.5 cans/day. Delay or replace first morning drink on some days.</td>
+            <td>Solo arousal practice without porn, no pressure to finish.</td>
+          </tr>
+          <tr>
+            <td>Weeks 5-8</td>
+            <td>Aim for 0.25-0.4 kg/week. Keep protein and training stable.</td>
+            <td>Average 1 can/day. At least 2 zero-caffeine mornings per week.</td>
+            <td>Reduce performance focus. Reverse kegel is fine if it stays calm and structured.</td>
+          </tr>
+          <tr>
+            <td>Weeks 9-12</td>
+            <td>Hold the deficit. Prevent rebound weekends.</td>
+            <td>Shift toward zero. Use replacement drink and pre-commitment, not willpower.</td>
+            <td>Continue no porn. Do not let practice become repeated self-checking.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Weekly review</h2>
+      <div id="weeklyReview"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h2>Log</h2>
+    <div id="logTable"></div>
+  </div>
+
+  <details style="margin-top:12px;">
+    <summary>Data management</summary>
+    <div style="margin-top:10px;" class="row">
+      <button onclick="downloadBackup()">Download backup</button>
+      <button onclick="document.getElementById('importFile').click()">Import backup</button>
+      <button onclick="resetAll()">Reset all data</button>
+    </div>
+    <input id="importFile" type="file" accept=".json,application/json" style="display:none" />
+    <div class="small muted" style="margin-top:8px;">Use backup before moving to a new phone or browser.</div>
+  </details>
+</div>
+
+<script>
+const KEY = "reset90_tracker_v2";
+
+function todayStr() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().slice(0,10);
+}
+function defaultState() {
+  return {
+    setup: {
+      startDate: todayStr(),
+      baselineWeight: 82,
+      baselineWaist: 85,
+      targetLoss: 3,
+      targetWaist: 82,
+      baselineCaffeine: 2.5
+    },
+    entries: []
+  };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    if (!parsed.setup || !parsed.entries) return defaultState();
+    return parsed;
+  } catch {
+    return defaultState();
+  }
+}
+function saveState(state) {
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+let state = loadState();
+
+function num(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return Number.isFinite(v) ? v : 0;
+}
+function rawVal(id) {
+  return document.getElementById(id).value;
+}
+function valOrNull(id) {
+  const v = document.getElementById(id).value;
+  return v === "" ? null : v;
+}
+function fillSetup() {
+  document.getElementById("startDate").value = state.setup.startDate || todayStr();
+  document.getElementById("baselineWeight").value = state.setup.baselineWeight;
+  document.getElementById("baselineWaist").value = state.setup.baselineWaist;
+  document.getElementById("targetLoss").value = state.setup.targetLoss;
+  document.getElementById("targetWaist").value = state.setup.targetWaist;
+  document.getElementById("baselineCaffeine").value = state.setup.baselineCaffeine;
+  document.getElementById("entryDate").value = todayStr();
+}
+function saveSetup() {
+  state.setup = {
+    startDate: document.getElementById("startDate").value || todayStr(),
+    baselineWeight: num("baselineWeight"),
+    baselineWaist: num("baselineWaist"),
+    targetLoss: num("targetLoss"),
+    targetWaist: num("targetWaist"),
+    baselineCaffeine: num("baselineCaffeine")
+  };
+  saveState(state);
+  render();
+  alert("Setup saved.");
+}
+function saveEntry() {
+  const date = rawVal("entryDate");
+  if (!date) {
+    alert("Date is required.");
+    return;
+  }
+  const entry = {
+    date,
+    weight: num("weight"),
+    waist: num("waist"),
+    training: Number(rawVal("training")),
+    plannedCaffeine: num("plannedCaffeine"),
+    actualCaffeine: num("actualCaffeine"),
+    firstCravingResisted: valOrNull("firstCravingResisted"),
+    unplannedPurchase: valOrNull("unplannedPurchase"),
+    morningDrinkType: valOrNull("morningDrinkType"),
+    porn: Number(rawVal("porn")),
+    masturbation: Number(rawVal("masturbation")),
+    reverseKegel: Number(rawVal("reverseKegel")),
+    stretch: Number(rawVal("stretch")),
+    anxiety: num("anxiety"),
+    sexPractice: rawVal("sexPractice"),
+    notes: rawVal("notes")
+  };
+  const i = state.entries.findIndex(e => e.date === date);
+  if (i >= 0) state.entries[i] = entry; else state.entries.push(entry);
+  state.entries.sort((a,b) => a.date.localeCompare(b.date));
+  saveState(state);
+  render();
+  alert("Entry saved.");
+}
+function lastN(arr, n) {
+  return arr.slice(-n);
+}
+function avg(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((a,b) => a+b, 0) / arr.length;
+}
+function pct(v, max) {
+  if (max <= 0) return 0;
+  return Math.max(0, Math.min(100, (v / max) * 100));
+}
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[m]));
+}
+function computeConfidence(entries14) {
+  if (!entries14.length) return 0;
+  let score = 0;
+  let max = entries14.length * 5;
+  for (const e of entries14) {
+    if (e.porn === 0) score += 1;
+    if (e.stretch === 1) score += 1;
+    if (e.anxiety > 0 && e.anxiety <= 5) score += 1;
+    if (e.sexPractice !== "none") score += 1;
+    if (e.reverseKegel === 1 && e.porn === 0) score += 1;
+  }
+  return Math.round((score / max) * 100);
+}
+function renderKPIs() {
+  const entries = [...state.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest = entries[entries.length - 1];
+  const baselineWeight = state.setup.baselineWeight || 82;
+  const baselineCaf = state.setup.baselineCaffeine || 2.5;
+  const targetLoss = state.setup.targetLoss || 3;
+
+  const currentWeight = latest && latest.weight ? latest.weight : baselineWeight;
+  const loss = +(baselineWeight - currentWeight).toFixed(1);
+  document.getElementById("weightDelta").textContent = `${loss >= 0 ? "-" : "+"}${Math.abs(loss).toFixed(1)} kg`;
+  document.getElementById("weightBar").style.width = `${pct(Math.max(0, loss), targetLoss)}%`;
+
+  const recent7 = lastN(entries, 7).filter(e => e.actualCaffeine >= 0);
+  const cafAvg = avg(recent7.map(e => e.actualCaffeine));
+  document.getElementById("caffeineAvg").textContent = cafAvg.toFixed(1);
+  const cafProgress = baselineCaf > 0 ? ((baselineCaf - cafAvg) / baselineCaf) * 100 : 100;
+  document.getElementById("caffeineBar").style.width = `${Math.max(0, Math.min(100, cafProgress))}%`;
+
+  const recent14 = lastN(entries, 14);
+  const conf = computeConfidence(recent14);
+  document.getElementById("confidenceScore").textContent = `${conf}%`;
+  document.getElementById("confidenceBar").style.width = `${conf}%`;
+}
+function lossTag(currentLoss, targetLoss) {
+  const ratio = targetLoss > 0 ? currentLoss / targetLoss : 0;
+  if (ratio >= 0.8) return {label:"on track", cls:"tag-good"};
+  if (ratio >= 0.4) return {label:"partial", cls:"tag-warn"};
+  return {label:"behind", cls:"tag-bad"};
+}
+function inverseTag(value, good, warn) {
+  if (value <= good) return {label:"good", cls:"tag-good"};
+  if (value <= warn) return {label:"watch", cls:"tag-warn"};
+  return {label:"risk", cls:"tag-bad"};
+}
+function renderWeeklyReview() {
+  const entries = [...state.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  const recent7 = lastN(entries, 7);
+  const recent14 = lastN(entries, 14);
+  const latest = entries[entries.length - 1];
+
+  const baselineWeight = state.setup.baselineWeight || 82;
+  const baselineWaist = state.setup.baselineWaist || 85;
+  const targetWaist = state.setup.targetWaist || 82;
+
+  const currentWeight = latest && latest.weight ? latest.weight : baselineWeight;
+  const currentWaist = latest && latest.waist ? latest.waist : baselineWaist;
+  const avgCaf = avg(recent7.map(e => e.actualCaffeine || 0));
+  const avgAnxiety = avg(recent7.map(e => e.anxiety || 0));
+  const trainingDays = recent7.filter(e => e.training === 1).length;
+  const stretchDays = recent7.filter(e => e.stretch === 1).length;
+  const pornDays = recent7.filter(e => e.porn === 1).length;
+  const rkDays = recent7.filter(e => e.reverseKegel === 1).length;
+  const unplannedPurchases = recent7.filter(e => String(e.unplannedPurchase) === "1").length;
+  const resistedCount = recent7.filter(e => String(e.firstCravingResisted) === "1").length;
+  const noPornDays = recent14.filter(e => e.porn === 0).length;
+  const sexPracticeDays = recent14.filter(e => e.sexPractice !== "none").length;
+
+  let weightTag = lossTag(baselineWeight - currentWeight, 3);
+  let waistTag = lossTag(baselineWaist - currentWaist, baselineWaist - targetWaist);
+  let cafTag = inverseTag(avgCaf, 0.5, 1.0);
+  let anxietyTag = inverseTag(avgAnxiety, 4.5, 6.0);
+  let pornTag = inverseTag(pornDays, 1, 2);
+  let purchaseTag = inverseTag(unplannedPurchases, 0, 1);
+
+  document.getElementById("weeklyReview").innerHTML = `
+    <div class="pill">Weight: ${currentWeight.toFixed(1)} kg <span class="${weightTag.cls}">${weightTag.label}</span></div>
+    <div class="pill">Waist: ${currentWaist.toFixed(1)} cm <span class="${waistTag.cls}">${waistTag.label}</span></div>
+    <div class="pill">7-day caffeine avg: ${avgCaf.toFixed(1)} <span class="${cafTag.cls}">${cafTag.label}</span></div>
+    <div class="pill">Unplanned caffeine buys / 7: ${unplannedPurchases} <span class="${purchaseTag.cls}">${purchaseTag.label}</span></div>
+    <div class="pill">First craving resisted / 7: ${resistedCount}</div>
+    <div class="pill">7-day anxiety avg: ${avgAnxiety.toFixed(1)} <span class="${anxietyTag.cls}">${anxietyTag.label}</span></div>
+    <div class="pill">Training days / 7: ${trainingDays}</div>
+    <div class="pill">Stretch days / 7: ${stretchDays}</div>
+    <div class="pill">Porn days / 7: ${pornDays} <span class="${pornTag.cls}">${pornTag.label}</span></div>
+    <div class="pill">Reverse kegel days / 7: ${rkDays}</div>
+    <div class="pill">No-porn days / 14: ${noPornDays}</div>
+    <div class="pill">Confidence practice days / 14: ${sexPracticeDays}</div>
+    <div style="margin-top:12px;">
+      ${generateWeeklyAdvice(currentWeight, baselineWeight, currentWaist, baselineWaist, avgCaf, trainingDays, stretchDays, pornDays, avgAnxiety, rkDays, unplannedPurchases)}
+    </div>
+  `;
+}
+function generateWeeklyAdvice(weight, baselineWeight, waist, baselineWaist, caf, training, stretch, pornDays, anxiety, rkDays, unplannedPurchases) {
+  const items = [];
+  if ((baselineWeight - weight) < 0.2) items.push("Weight change is weak. The likely leak is intake, not walking. Standardize one meal or remove one recurring drink.");
+  if ((baselineWaist - waist) < 0.5) items.push("Waist is not moving enough. Weekend intake or portion drift is the likely issue unless measurement is inconsistent.");
+  if (caf > 1.0) items.push("Morning caffeine remains materially high. The problem is the automatic purchase loop, not afternoon timing.");
+  if (unplannedPurchases > 1) items.push("Too many unplanned purchases. Pre-decide the number of cans before leaving home or before the first store decision.");
+  if (training < 3) items.push("Training frequency is low for preserving muscle during fat loss.");
+  if (stretch < 4) items.push("Bed routine is unstable. Attach stretching to a fixed trigger before entering bed.");
+  if (pornDays > 1) items.push("Porn exposure is still reinforcing performance monitoring and novelty dependence.");
+  if (anxiety > 6) items.push("Anxiety is still driving urgency. Reduce stimulation earlier and stop turning practice into a pass-fail check.");
+  if (rkDays >= 5 && pornDays > 0) items.push("Reverse kegel frequency is high enough, but porn alongside it risks turning training into stimulation-seeking rather than calm control.");
+  if (rkDays === 0) items.push("No reverse kegel practice recorded. If you want to continue it, keep it structured and brief rather than testing repeatedly.");
+  if (!items.length) items.push("The structure is working. Continue rather than escalating.");
+  return "<ul>" + items.map(x => `<li>${escapeHtml(x)}</li>`).join("") + "</ul>";
+}
+function renderLog() {
+  const entries = [...state.entries].sort((a,b)=>b.date.localeCompare(a.date));
+  if (!entries.length) {
+    document.getElementById("logTable").innerHTML = `<div class="muted">No entries yet.</div>`;
+    return;
+  }
+  let rows = entries.map(e => `
+    <tr>
+      <td>${escapeHtml(e.date)}</td>
+      <td>${fmt(e.weight)}</td>
+      <td>${fmt(e.waist)}</td>
+      <td>${fmt(e.plannedCaffeine)}</td>
+      <td>${fmt(e.actualCaffeine)}</td>
+      <td>${boolTxt(e.firstCravingResisted)}</td>
+      <td>${boolTxt(e.unplannedPurchase)}</td>
+      <td>${escapeHtml(e.morningDrinkType || "")}</td>
+      <td>${e.training ? "Yes" : "No"}</td>
+      <td>${e.porn ? "Yes" : "No"}</td>
+      <td>${e.masturbation ? "Yes" : "No"}</td>
+      <td>${e.reverseKegel ? "Yes" : "No"}</td>
+      <td>${e.stretch ? "Yes" : "No"}</td>
+      <td>${fmt(e.anxiety)}</td>
+      <td>${escapeHtml(e.sexPractice || "")}</td>
+      <td>${escapeHtml(e.notes || "")}</td>
+    </tr>
+  `).join("");
+  document.getElementById("logTable").innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Wt</th><th>Waist</th><th>Plan Caf</th><th>Actual Caf</th><th>Resisted</th><th>Unplanned</th>
+          <th>Drink</th><th>Train</th><th>Porn</th><th>Mast</th><th>RevK</th><th>Stretch</th><th>Anx</th><th>Practice</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+function fmt(v) {
+  return (v === 0 || v) ? String(v) : "";
+}
+function boolTxt(v) {
+  if (v === null || v === "") return "";
+  return String(v) === "1" ? "Yes" : "No";
+}
+function exportData() {
+  downloadBackup();
+}
+function downloadBackup() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "reset90_tracker_backup_v2.json";
+  a.click();
+}
+function resetAll() {
+  if (!confirm("Delete all tracker data?")) return;
+  state = defaultState();
+  saveState(state);
+  fillSetup();
+  render();
+}
+document.getElementById("importFile").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed.setup || !parsed.entries) throw new Error("Invalid");
+      state = parsed;
+      saveState(state);
+      fillSetup();
+      render();
+      alert("Backup imported.");
+    } catch {
+      alert("Invalid backup file.");
+    }
+  };
+  reader.readAsText(file);
+});
+function render() {
+  renderKPIs();
+  renderWeeklyReview();
+  renderLog();
+}
+fillSetup();
+render();
+</script>
+</body>
+</html>
